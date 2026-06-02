@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Dashboard</title>
+
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<!-- Google Fonts: Sora (display) + DM Sans (body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+<script>
+  /* ── Tailwind config ─────────────────────────────────────── */
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { display: ['Sora','sans-serif'], body: ['DM Sans','sans-serif'] },
+        colors: {
+          brand: { 50:'#f0f4ff', 100:'#e0eaff', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca' },
+          emerald: { 400:'#34d399', 500:'#10b981' },
+          amber:   { 400:'#fbbf24', 500:'#f59e0b' },
+          slate:   { 850:'#0f172a' }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  /* ── Base ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #060918;
+    color: #e2e8f0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Ambient background mesh ──────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 10%,  rgba(99,102,241,.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 80%,  rgba(16,185,129,.12) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 50% 40%,  rgba(59,130,246,.08) 0%, transparent 50%);
+  }
+
+  /* ── Noise grain overlay ──────────────────────────────────── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #app { position: relative; z-index: 1; }
+
+  /* ── Glass card ───────────────────────────────────────────── */
+  .glass {
+    background: rgba(15,23,42,.65);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 16px;
+  }
+
+  /* ── KPI card hover lift ──────────────────────────────────── */
+  .kpi-card {
+    transition: transform .25s ease, box-shadow .25s ease;
+    cursor: default;
+  }
+  .kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(99,102,241,.18);
+  }
+
+  /* ── Gradient accent line ─────────────────────────────────── */
+  .accent-line {
+    height: 2px;
+    background: linear-gradient(90deg, #6366f1, #10b981, #3b82f6);
+    border-radius: 2px;
+  }
+
+  /* ── Table ───────────────────────────────────────────────── */
+  #data-table th { cursor: pointer; user-select: none; white-space: nowrap; }
+  #data-table th:hover { color: #a5b4fc; }
+  #data-table tbody tr { transition: background .15s; }
+  #data-table tbody tr:hover { background: rgba(99,102,241,.08); }
+  .sort-icon { display: inline-block; margin-left: 4px; opacity: .4; font-size: 10px; }
+  .sort-icon.active { opacity: 1; color: #818cf8; }
+
+  /* ── Filter chip ─────────────────────────────────────────── */
+  .filter-chip {
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    background: rgba(255,255,255,.04);
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    color: #94a3b8;
+  }
+  .filter-chip:hover, .filter-chip.active {
+    background: rgba(99,102,241,.2);
+    border-color: #6366f1;
+    color: #c7d2fe;
+  }
+
+  /* ── Status badge ─────────────────────────────────────────── */
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .03em;
+  }
+  .badge-green  { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.25); }
+  .badge-blue   { background: rgba(99,102,241,.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,.25); }
+  .badge-amber  { background: rgba(245,158,11,.15);  color: #fbbf24; border: 1px solid rgba(245,158,11,.25); }
+  .badge-gray   { background: rgba(148,163,184,.1);  color: #94a3b8; border: 1px solid rgba(148,163,184,.15); }
+
+  /* ── Spinner ──────────────────────────────────────────────── */
+  .spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid rgba(99,102,241,.2);
+    border-top-color: #6366f1;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Skeleton ─────────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.08) 50%, rgba(255,255,255,.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ── Fade-in ──────────────────────────────────────────────── */
+  .fade-in {
+    opacity: 0; transform: translateY(12px);
+    animation: fadeUp .45s ease forwards;
+  }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+  .delay-1 { animation-delay: .08s; }
+  .delay-2 { animation-delay: .16s; }
+  .delay-3 { animation-delay: .24s; }
+  .delay-4 { animation-delay: .32s; }
+
+  /* ── Refresh button ───────────────────────────────────────── */
+  #refresh-btn {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border: 1px solid rgba(255,255,255,.12);
+    transition: all .2s;
+  }
+  #refresh-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    box-shadow: 0 0 20px rgba(99,102,241,.4);
+    transform: translateY(-1px);
+  }
+  #refresh-btn:disabled { opacity: .55; cursor: not-allowed; }
+  #refresh-btn .btn-icon { transition: transform .6s; }
+  #refresh-btn.loading .btn-icon { animation: spin .6s linear infinite; }
+
+  /* ── Error banner ─────────────────────────────────────────── */
+  #error-banner { display: none; }
+  #error-banner.visible { display: flex; }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(99,102,241,.35); border-radius: 3px; }
+</style>
+</head>
+
+<body>
+<div id="app" class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+  <!-- ══════════════════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════════════════ -->
+  <header class="fade-in flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <!-- Logo mark + title -->
+      <div class="flex items-center gap-3 mb-1">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+             style="background:linear-gradient(135deg,#6366f1,#10b981)">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2"
+               viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round"
+               d="M3 13.5l4-4 4 4 4-5 4 4"/><path stroke-linecap="round" stroke-linejoin="round"
+               d="M3 20h18M3 4h18"/></svg>
+        </div>
+        <h1 id="dash-title" class="font-display text-xl font-700 tracking-tight text-white"
+            style="font-weight:700;letter-spacing:-.02em">Loading…</h1>
+      </div>
+      <p id="dash-subtitle" class="text-slate-400 text-sm pl-12">Fetching data…</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-3 pl-12 sm:pl-0">
+      <!-- Last updated -->
+      <div class="glass px-4 py-2 text-xs text-slate-400 flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/>
+        </svg>
+        <span>Updated: <strong id="last-updated" class="text-slate-200">—</strong></span>
+      </div>
+      <!-- Refresh button -->
+      <button id="refresh-btn" onclick="loadData()"
+              class="flex items-center gap-2 text-white text-sm font-600 px-4 py-2 rounded-xl"
+              style="font-weight:600">
+        <svg class="w-4 h-4 btn-icon" fill="none" stroke="currentColor" stroke-width="2.2"
+             viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 4v5h5M20 20v-5h-5M20.49 9A9 9 0 005.64 5.64L4 4M3.51 15a9 9 0 0014.85 3.36L20 20"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════
+       ACCENT LINE
+  ══════════════════════════════════════════════════════ -->
+  <div class="accent-line w-full fade-in delay-1"></div>
+
+  <!-- ══════════════════════════════════════════════════════
+       ERROR BANNER (hidden by default)
+  ══════════════════════════════════════════════════════ -->
+  <div id="error-banner"
+       class="glass border border-red-500/20 rounded-2xl p-5 items-center gap-4 text-sm">
+    <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+      <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2"
+           viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/>
+        <path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>
+    </div>
+    <div>
+      <p class="text-red-300 font-semibold">Unable to load data</p>
+      <p id="error-msg" class="text-slate-400 mt-0.5">—</p>
+    </div>
+    <button onclick="loadData()"
+            class="ml-auto text-xs px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-colors">
+      Try again
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SKELETON LOADERS (shown while loading)
+  ══════════════════════════════════════════════════════ -->
+  <div id="skeleton-kpis" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div class="glass p-5 h-28 skeleton"></div>
+    <div class="glass p-5 h-28 skeleton"></div>
+    <div class="glass p-5 h-28 skeleton"></div>
+    <div class="glass p-5 h-28 skeleton"></div>
+    <div class="glass p-5 h-28 skeleton"></div>
+    <div class="glass p-5 h-28 skeleton"></div>
+  </div>
+
+  <div id="skeleton-charts" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="glass lg:col-span-2 h-72 skeleton"></div>
+    <div class="glass h-72 skeleton"></div>
+  </div>
+
+  <div id="skeleton-table" class="glass h-80 skeleton"></div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAIN CONTENT (hidden until data loaded)
+  ══════════════════════════════════════════════════════ -->
+  <div id="main-content" class="hidden space-y-8">
+
+    <!-- ── KPI Cards ──────────────────────────────────────── -->
+    <section id="kpi-section"
+             class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 fade-in delay-1">
+      <!-- Populated by JS -->
+    </section>
+
+    <!-- ── Charts row ─────────────────────────────────────── -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in delay-2">
+      <!-- Line chart -->
+      <div class="glass p-6 lg:col-span-2">
+        <p id="chart-title" class="font-display text-sm font-semibold text-slate-200 mb-4"></p>
+        <div class="relative" style="height:240px">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+      <!-- Donut chart -->
+      <div class="glass p-6 flex flex-col">
+        <p id="donut-title" class="font-display text-sm font-semibold text-slate-200 mb-4"></p>
+        <div class="flex-1 flex items-center justify-center" style="max-height:220px">
+          <canvas id="donutChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Table ──────────────────────────────────────────── -->
+    <section class="glass p-6 fade-in delay-3">
+      <!-- Table header + controls -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div>
+          <h2 class="font-display text-base font-semibold text-white">Site Records</h2>
+          <p id="table-count" class="text-slate-400 text-xs mt-0.5"></p>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <!-- Search -->
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none"
+                 fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input id="search-input" type="text" placeholder="Search sites…"
+                   oninput="applyFilters()"
+                   class="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 w-48 transition-colors"
+                   style="border-color:rgba(255,255,255,.08)" />
+          </div>
+          <!-- Filter chips -->
+          <div id="filter-chips" class="flex flex-wrap gap-2">
+            <!-- Populated by JS from unique SSV statuses -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable table -->
+      <div class="overflow-x-auto rounded-xl" style="max-height:400px;overflow-y:auto">
+        <table id="data-table" class="w-full text-sm">
+          <thead class="sticky top-0 z-10"
+                 style="background:rgba(15,23,42,.95);backdrop-filter:blur(8px)">
+            <tr id="table-header"></tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-white/5"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between mt-4 text-xs text-slate-400">
+        <span id="page-info">—</span>
+        <div class="flex gap-2">
+          <button id="prev-btn" onclick="changePage(-1)"
+                  class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style="border-color:rgba(255,255,255,.08)">← Prev</button>
+          <button id="next-btn" onclick="changePage(1)"
+                  class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  style="border-color:rgba(255,255,255,.08)">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Footer ─────────────────────────────────────────── -->
+    <footer class="text-center text-xs text-slate-600 pb-4 fade-in delay-4">
+      Data refreshes automatically on page load · Powered by Chart.js
+    </footer>
+  </div><!-- /main-content -->
+
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+/*
+ ╔══════════════════════════════════════════════════════════════╗
+ ║              DASHBOARD CONTROLLER                            ║
+ ╠══════════════════════════════════════════════════════════════╣
+ ║  DATA FILE: data.json (same directory as this HTML file)     ║
+ ║                                                              ║
+ ║  Required data.json structure:                               ║
+ ║  {                                                           ║
+ ║    "meta": {                                                 ║
+ ║      "project": "string",                                    ║
+ ║      "reportTitle": "string",                                ║
+ ║      "lastUpdated": "ISO-8601 date string",                  ║
+ ║      "period": "string"                                      ║
+ ║    },                                                        ║
+ ║    "kpis": [                                                 ║
+ ║      {                                                       ║
+ ║        "label": "string",                                    ║
+ ║        "value": number,                                      ║
+ ║        "unit": "%" | "",                                     ║
+ ║        "change": number (positive = up, negative = down),    ║
+ ║        "trend": "up" | "down",                               ║
+ ║        "icon": "tower"|"check"|"gauge"|"clock"|"server"|     ║
+ ║                "signal"                                      ║
+ ║      }                                                       ║
+ ║    ],                                                        ║
+ ║    "chart": {                                                ║
+ ║      "title": "string",                                      ║
+ ║      "labels": ["Jan","Feb", …],                             ║
+ ║      "datasets": [                                           ║
+ ║        { "label":"string", "data":[…], "color":"#hex" }      ║
+ ║      ]                                                       ║
+ ║    },                                                        ║
+ ║    "donut": {                                                ║
+ ║      "title": "string",                                      ║
+ ║      "labels": ["string", …],                                ║
+ ║      "data":   [number, …],                                  ║
+ ║      "colors": ["#hex", …]                                   ║
+ ║    },                                                        ║
+ ║    "table": {                                                ║
+ ║      "columns": ["Col1","Col2", …],                          ║
+ ║      "rows": [["val1","val2", …], …]                         ║
+ ║    }                                                         ║
+ ║  }                                                           ║
+ ╚══════════════════════════════════════════════════════════════╝
+*/
+
+// ── Config ───────────────────────────────────────────────────
+const DATA_URL = './data.json';   // ← Change this path/URL if needed
+const ROWS_PER_PAGE = 10;
+
+// ── State ────────────────────────────────────────────────────
+let allRows      = [];   // All table rows from data.json
+let filteredRows = [];   // After search + filter chips
+let sortColIdx   = -1;   // Currently sorted column index
+let sortAsc      = true; // Sort direction
+let currentPage  = 1;
+let activeFilter = 'All';
+
+// Chart.js instances (kept for destroy-on-reload)
+let lineChartInst = null;
+let donutChartInst = null;
+
+// ── SVG icon map ─────────────────────────────────────────────
+const ICONS = {
+  tower:  `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>`,
+  check:  `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg>`,
+  gauge:  `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 0v4m0 8l-4-4"/></svg>`,
+  clock:  `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>`,
+  server: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`,
+  signal: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 6c0 0 5-2 11-2s11 2 11 2M5 10c0 0 3-1 7-1s7 1 7 1m-9 4h4m-2 4h.01"/></svg>`
+};
+
+// KPI accent colors
+const KPI_COLORS = [
+  { bg: 'rgba(99,102,241,.12)',  icon: '#818cf8' },
+  { bg: 'rgba(16,185,129,.12)', icon: '#34d399' },
+  { bg: 'rgba(16,185,129,.12)', icon: '#34d399' },
+  { bg: 'rgba(245,158,11,.12)', icon: '#fbbf24' },
+  { bg: 'rgba(59,130,246,.12)', icon: '#60a5fa' },
+  { bg: 'rgba(168,85,247,.12)', icon: '#c084fc' },
+];
+
+// ── Utilities ────────────────────────────────────────────────
+/** Format ISO date string to human-readable */
+function fmtDate(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-GB', {
+      day:'2-digit', month:'short', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+  } catch { return iso; }
+}
+
+/** Format number with comma thousands separator */
+function fmtNum(n, unit) {
+  const formatted = typeof n === 'number'
+    ? (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1))
+    : n;
+  return unit === '%' ? formatted + '%' : formatted;
+}
+
+/** Show/hide skeleton vs real content */
+function setLoading(isLoading) {
+  document.getElementById('skeleton-kpis').classList.toggle('hidden', !isLoading);
+  document.getElementById('skeleton-charts').classList.toggle('hidden', !isLoading);
+  document.getElementById('skeleton-table').classList.toggle('hidden', !isLoading);
+  document.getElementById('main-content').classList.toggle('hidden', isLoading);
+
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = isLoading;
+  btn.classList.toggle('loading', isLoading);
+}
+
+/** Show/hide error banner */
+function showError(msg) {
+  const banner = document.getElementById('error-banner');
+  document.getElementById('error-msg').textContent = msg;
+  banner.classList.add('visible');
+}
+function hideError() {
+  document.getElementById('error-banner').classList.remove('visible');
+}
+
+// ── Badge helper ─────────────────────────────────────────────
+function statusBadge(val) {
+  const v = String(val).toLowerCase();
+  if (v === 'accepted' || v === 'yes')  return `<span class="badge badge-green">${val}</span>`;
+  if (v === 'submitted')                return `<span class="badge badge-blue">${val}</span>`;
+  if (v === 'pending')                  return `<span class="badge badge-amber">${val}</span>`;
+  if (v === 'no')                       return `<span class="badge badge-gray">${val}</span>`;
+  return `<span class="text-slate-300">${val}</span>`;
+}
+
+// ── KPI Cards ────────────────────────────────────────────────
+function renderKPIs(kpis) {
+  const section = document.getElementById('kpi-section');
+  section.innerHTML = kpis.map((k, i) => {
+    const col = KPI_COLORS[i % KPI_COLORS.length];
+    const isUp = k.trend === 'up';
+    const changeColor = isUp ? 'text-emerald-400' : 'text-red-400';
+    const arrow = isUp ? '↑' : '↓';
+    return `
+      <div class="glass kpi-card p-5 flex flex-col gap-3">
+        <!-- Icon -->
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+             style="background:${col.bg};color:${col.icon}">
+          ${ICONS[k.icon] || ICONS.check}
+        </div>
+        <!-- Value -->
+        <div>
+          <p class="font-display text-2xl font-bold text-white leading-none"
+             style="font-weight:700;letter-spacing:-.02em">
+            ${fmtNum(k.value, k.unit)}
+          </p>
+          <p class="text-slate-400 text-xs mt-1">${k.label}</p>
+        </div>
+        <!-- Change -->
+        <div class="${changeColor} text-xs font-semibold flex items-center gap-1">
+          <span>${arrow} ${Math.abs(k.change)}%</span>
+          <span class="text-slate-600 font-normal">vs prev.</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Line Chart ───────────────────────────────────────────────
+function renderLineChart(chartData) {
+  document.getElementById('chart-title').textContent = chartData.title;
+  if (lineChartInst) lineChartInst.destroy();
+
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  lineChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartData.labels,
+      datasets: chartData.datasets.map(ds => ({
+        label: ds.label,
+        data: ds.data,
+        borderColor: ds.color,
+        backgroundColor: ds.color + '18',
+        borderWidth: 2.5,
+        pointBackgroundColor: ds.color,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.4,
+        fill: true,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#94a3b8', font: { family:'DM Sans', size:12 }, boxWidth: 12, padding:16 }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,.92)',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          titleColor: '#e2e8f0',
+          bodyColor: '#94a3b8',
+          padding: 12,
+          titleFont: { family:'Sora', size:12 },
+          bodyFont: { family:'DM Sans', size:12 },
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#64748b', font: { family:'DM Sans', size:11 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#64748b', font: { family:'DM Sans', size:11 } }
+        }
+      }
+    }
+  });
+}
+
+// ── Donut Chart ──────────────────────────────────────────────
+function renderDonutChart(donutData) {
+  document.getElementById('donut-title').textContent = donutData.title;
+  if (donutChartInst) donutChartInst.destroy();
+
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: donutData.labels,
+      datasets: [{
+        data: donutData.data,
+        backgroundColor: donutData.colors.map(c => c + 'cc'),
+        borderColor: donutData.colors,
+        borderWidth: 2,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#94a3b8', font: { family:'DM Sans', size:11 },
+            boxWidth: 10, padding: 12,
+            generateLabels(chart) {
+              const meta = chart.getDatasetMeta(0);
+              return chart.data.labels.map((label, i) => ({
+                text: label.length > 20 ? label.slice(0,18)+'…' : label,
+                fillStyle: chart.data.datasets[0].backgroundColor[i],
+                strokeStyle: chart.data.datasets[0].borderColor[i],
+                lineWidth: 2,
+                hidden: meta.data[i] && meta.data[i].hidden,
+                index: i
+              }));
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,.92)',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          titleColor: '#e2e8f0',
+          bodyColor: '#94a3b8',
+          padding: 12,
+        }
+      }
+    }
+  });
+}
+
+// ── Table ────────────────────────────────────────────────────
+let tableColumns = [];
+
+function renderTableHeader(columns) {
+  tableColumns = columns;
+  const header = document.getElementById('table-header');
+  header.innerHTML = columns.map((col, i) => `
+    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider
+               hover:text-slate-200 transition-colors"
+        onclick="sortTable(${i})">
+      ${col}
+      <span id="sort-${i}" class="sort-icon">⇅</span>
+    </th>`).join('');
+}
+
+/** Apply search text + active filter chip, then re-render */
+function applyFilters() {
+  const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+  filteredRows = allRows.filter(row => {
+    // Search across all cells
+    const matchSearch = !search || row.some(cell =>
+      String(cell).toLowerCase().includes(search)
+    );
+    // Filter chip: match against SSV Status column (index 4) or IT Accepted (index 5)
+    const matchChip = activeFilter === 'All' ||
+      row.some(cell => String(cell).toLowerCase() === activeFilter.toLowerCase());
+    return matchSearch && matchChip;
+  });
+
+  // Re-apply sort if active
+  if (sortColIdx >= 0) applySortToFiltered();
+
+  currentPage = 1;
+  renderTablePage();
+}
+
+function sortTable(colIdx) {
+  if (sortColIdx === colIdx) {
+    sortAsc = !sortAsc;
+  } else {
+    sortColIdx = colIdx;
+    sortAsc = true;
+  }
+  // Update sort icons
+  document.querySelectorAll('.sort-icon').forEach((el, i) => {
+    el.textContent = i === colIdx ? (sortAsc ? '↑' : '↓') : '⇅';
+    el.classList.toggle('active', i === colIdx);
+  });
+  applySortToFiltered();
+  currentPage = 1;
+  renderTablePage();
+}
+
+function applySortToFiltered() {
+  filteredRows.sort((a, b) => {
+    const av = a[sortColIdx] ?? '';
+    const bv = b[sortColIdx] ?? '';
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
+    return sortAsc
+      ? String(av).localeCompare(String(bv))
+      : String(bv).localeCompare(String(av));
+  });
+}
+
+/** Columns that get badge treatment (by header name) */
+const BADGE_COLS = new Set(['SSV Status','IT Accepted']);
+
+function renderTablePage() {
+  const tbody = document.getElementById('table-body');
+  const start  = (currentPage - 1) * ROWS_PER_PAGE;
+  const pageRows = filteredRows.slice(start, start + ROWS_PER_PAGE);
+  const total  = filteredRows.length;
+  const pages  = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
+
+  tbody.innerHTML = pageRows.length
+    ? pageRows.map(row => `
+        <tr>
+          ${row.map((cell, ci) => {
+            const colName = tableColumns[ci] || '';
+            const display = BADGE_COLS.has(colName) ? statusBadge(cell) : `<span class="text-slate-300">${cell}</span>`;
+            return `<td class="px-4 py-3 whitespace-nowrap text-xs">${display}</td>`;
+          }).join('')}
+        </tr>`).join('')
+    : `<tr><td colspan="${tableColumns.length}" class="px-4 py-10 text-center text-slate-500 text-sm">
+         No records match your search.
+       </td></tr>`;
+
+  // Pagination controls
+  document.getElementById('page-info').textContent =
+    `Showing ${Math.min(start+1, total)}–${Math.min(start+ROWS_PER_PAGE, total)} of ${total} records`;
+  document.getElementById('prev-btn').disabled = currentPage <= 1;
+  document.getElementById('next-btn').disabled = currentPage >= pages;
+
+  document.getElementById('table-count').textContent =
+    `${total} record${total !== 1 ? 's' : ''}`;
+}
+
+function changePage(dir) {
+  const pages = Math.ceil(filteredRows.length / ROWS_PER_PAGE);
+  currentPage = Math.max(1, Math.min(pages, currentPage + dir));
+  renderTablePage();
+}
+
+/** Build filter chips from unique values in the status column (index 4) */
+function buildFilterChips(rows) {
+  const statuses = ['All', ...new Set(rows.map(r => r[4]).filter(Boolean))];
+  const container = document.getElementById('filter-chips');
+  container.innerHTML = statuses.map(s => `
+    <button class="filter-chip ${s === activeFilter ? 'active' : ''}"
+            onclick="setFilter('${s}')">
+      ${s}
+    </button>`).join('');
+}
+
+function setFilter(val) {
+  activeFilter = val;
+  // Refresh chip styles
+  document.querySelectorAll('.filter-chip').forEach(el => {
+    el.classList.toggle('active', el.textContent.trim() === val);
+  });
+  applyFilters();
+}
+
+// ── Main render ──────────────────────────────────────────────
+function renderDashboard(data) {
+  /* Header */
+  document.getElementById('dash-title').textContent = data.meta.project;
+  document.getElementById('dash-subtitle').textContent =
+    `${data.meta.reportTitle} · ${data.meta.period}`;
+  document.getElementById('last-updated').textContent = fmtDate(data.meta.lastUpdated);
+
+  /* KPIs */
+  renderKPIs(data.kpis);
+
+  /* Charts */
+  renderLineChart(data.chart);
+  renderDonutChart(data.donut);
+
+  /* Table */
+  allRows      = data.table.rows;
+  filteredRows = [...allRows];
+  renderTableHeader(data.table.columns);
+  buildFilterChips(allRows);
+  renderTablePage();
+}
+
+// ── Data loader ──────────────────────────────────────────────
+async function loadData() {
+  hideError();
+  setLoading(true);
+
+  try {
+    /* Add cache-busting so managers always get fresh data on refresh */
+    const url = `${DATA_URL}?v=${Date.now()}`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+
+    /* Basic validation — ensure required keys exist */
+    if (!data.meta || !data.kpis || !data.chart || !data.table) {
+      throw new Error('data.json is missing required fields (meta, kpis, chart, table).');
+    }
+
+    renderDashboard(data);
+    setLoading(false);
+
+  } catch (err) {
+    setLoading(false);
+    showError(err.message || 'Unknown error. Check that data.json is in the same folder.');
+    console.error('[Dashboard] Data load failed:', err);
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>

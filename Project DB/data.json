@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "project": "Mobily 3Y NW Expansion",
+    "reportTitle": "Project Progress Report",
+    "lastUpdated": "2026-06-02T10:30:00Z",
+    "period": "Q2 2026"
+  },
+  "kpis": [
+    { "label": "Total Sites",        "value": 1521,  "unit": "",   "change": 2.1,  "trend": "up",   "icon": "tower" },
+    { "label": "SSV Final Accepted", "value": 1175,  "unit": "",   "change": 4.8,  "trend": "up",   "icon": "check" },
+    { "label": "Acceptance Rate",    "value": 77.3,  "unit": "%",  "change": 1.2,  "trend": "up",   "icon": "gauge" },
+    { "label": "Pending Actions",    "value": 346,   "unit": "",   "change": -8.4, "trend": "down", "icon": "clock" },
+    { "label": "IT Combined Acc.",   "value": 1174,  "unit": "",   "change": 3.9,  "trend": "up",   "icon": "server" },
+    { "label": "RFS Declared",       "value": 892,   "unit": "",   "change": 6.1,  "trend": "up",   "icon": "signal" }
+  ],
+  "chart": {
+    "title": "Monthly SSV Acceptance Progress",
+    "labels": ["Jan","Feb","Mar","Apr","May","Jun"],
+    "datasets": [
+      { "label": "SSV Submitted", "data": [180,245,310,390,480,560], "color": "#6366f1" },
+      { "label": "SSV Accepted",  "data": [140,210,275,350,430,510], "color": "#10b981" }
+    ]
+  },
+  "donut": {
+    "title": "Sites by Category",
+    "labels": ["Cat A – 4G Only","Cat B – 5G Only","Cat C – HO5","Cat D – SSV Final"],
+    "data": [129, 87, 13, 51],
+    "colors": ["#6366f1","#10b981","#f59e0b","#3b82f6"]
+  },
+  "table": {
+    "columns": ["Site ID","Governate","City","Activity","SSV Status","IT Accepted","Category","Last Action"],
+    "rows": [
+      ["W1001","Riyadh","Al Malaz","5G","Accepted","Yes","B","2026-05-28"],
+      ["W1042","Jeddah","Al Hamra","4G","Accepted","Yes","A","2026-05-25"],
+      ["W1087","Makkah","Aziziyah","4G+5G","Submitted","No","C","2026-05-20"],
+      ["W1103","Madinah","Al Anbariyah","5G","Accepted","Yes","B","2026-05-30"],
+      ["W1211","Dammam","Al Faisaliyah","4G","Pending","No","—","2026-04-18"],
+      ["W1334","Tabuk","Al Muruj","5G","Accepted","Yes","B","2026-05-22"],
+      ["W1412","Abha","Al Manhal","4G","Accepted","Yes","A","2026-05-15"],
+      ["W1556","Taif","Al Shafa","4G+5G","Accepted","Yes","D","2026-05-29"],
+      ["W1607","Hail","Al Ghazalah","5G","Submitted","No","C","2026-05-10"],
+      ["W1789","Qassim","Unayzah","4G","Accepted","Yes","A","2026-05-27"],
+      ["W1843","Najran","Al Aqiq","5G","Accepted","Yes","B","2026-05-18"],
+      ["W1921","Jizan","Sabya","4G","Pending","No","—","2026-04-05"],
+      ["W2005","Asir","Khamis Mushait","4G+5G","Accepted","Yes","D","2026-05-31"],
+      ["W2118","Al Jouf","Sakaka","5G","Accepted","Yes","B","2026-05-24"],
+      ["W2212","Northern Borders","Arar","4G","Accepted","Yes","A","2026-05-26"]
+    ]
+  }
+}
